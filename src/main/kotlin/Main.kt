@@ -1,6 +1,8 @@
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import kotlin.system.exitProcess
 
-// Clase base Task
+// Base class Task
 open class Task(
     var title: String,
     var description: String,
@@ -8,7 +10,7 @@ open class Task(
     var priority: Int
 )
 
-// Clase WorkTask que hereda de Task
+// WorkTask class inheriting from Task
 class WorkTask(
     title: String,
     description: String,
@@ -17,7 +19,7 @@ class WorkTask(
     var projectName: String
 ) : Task(title, description, dueDate, priority)
 
-// Clase PersonalTask que hereda de Task
+// PersonalTask class inheriting from Task
 class PersonalTask(
     title: String,
     description: String,
@@ -26,7 +28,7 @@ class PersonalTask(
     var personalNotes: String
 ) : Task(title, description, dueDate, priority)
 
-// Interfaz TaskManager
+// TaskManager interface
 interface TaskManager {
     fun addTask(category: String, task: Task)
     fun editTask(taskId: Int, newTask: Task)
@@ -34,9 +36,9 @@ interface TaskManager {
     fun getStatistics(): Map<String, Int>
 }
 
-// Implementación de TaskManager
+// TaskManager implementation
 class SimpleTaskManager : TaskManager {
-    private val tasksByCategory: MutableMap<String, MutableList<Task>> = mutableMapOf("Work" to mutableListOf(), "Personal" to mutableListOf())
+    val tasksByCategory: MutableMap<String, MutableList<Task>> = mutableMapOf("Work" to mutableListOf(), "Personal" to mutableListOf())
     private var taskCounter: Int = 0
 
     override fun addTask(category: String, task: Task) {
@@ -45,15 +47,15 @@ class SimpleTaskManager : TaskManager {
     }
 
     override fun editTask(taskId: Int, newTask: Task) {
-        // Implementación para editar una tarea
+        // Implementation to edit a task
     }
 
     override fun deleteTask(taskId: Int) {
-        // Implementación para eliminar una tarea
+        // Implementation to delete a task
     }
 
     override fun getStatistics(): Map<String, Int> {
-        // Implementación para obtener estadísticas
+        // Implementation to get statistics
         return mapOf("Total Tasks" to taskCounter, "Completed Tasks" to 0)
     }
 
@@ -61,24 +63,94 @@ class SimpleTaskManager : TaskManager {
         return tasksByCategory.mapValues { (_, tasks) -> tasks.filter(filterFunc) }
     }
 
-    // Corregido: Funcion sortTasks con tipos explícitos
     fun sortTasks(keyFunc: (Task) -> Comparable<Any>) {
         tasksByCategory.values.forEach { it.sortBy { task -> keyFunc(task) } }
     }
 }
 
-// Ejemplo de uso
+// Function to read a date from the user
+fun readDate(prompt: String): LocalDate {
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    while (true) {
+        println(prompt)
+        try {
+            return LocalDate.parse(readLine(), formatter)
+        } catch (e: Exception) {
+            println("Invalid date. Please use the format yyyy-MM-dd.")
+        }
+    }
+}
+
+// Function to read an integer from the user
+fun readInt(prompt: String): Int {
+    while (true) {
+        println(prompt)
+        try {
+            return readLine()?.toInt() ?: 0
+        } catch (e: Exception) {
+            println("Invalid input. Please enter an integer.")
+        }
+    }
+}
+
+// Main function with user interaction
 fun main() {
     val taskManager = SimpleTaskManager()
-    val workTask = WorkTask("Prepare report", "Prepare the quarterly report", LocalDate.of(2025, 2, 28), 1, "Q1 Reports")
-    val personalTask = PersonalTask("Buy groceries", "Buy groceries for the week", LocalDate.of(2025, 2, 20), 2, "Need to buy fresh produce")
 
-    taskManager.addTask("Work", workTask)
-    taskManager.addTask("Personal", personalTask)
+    while (true) {
+        println("\n--- Task Manager ---")
+        println("1. Add Task")
+        println("2. Filter Tasks by Priority")
+        println("3. Sort Tasks by Due Date")
+        println("4. Exit")
+        print("Select an option: ")
 
-    // Filtrar tareas por prioridad
-    val highPriorityTasks = taskManager.filterTasks { it.priority == 1 }
+        when (readLine()) {
+            "1" -> {
+                println("Enter the task category (Work/Personal): ")
+                val category = readLine() ?: ""
+                println("Enter the task title: ")
+                val title = readLine() ?: ""
+                println("Enter the task description: ")
+                val description = readLine() ?: ""
+                val dueDate = readDate("Enter the due date (yyyy-MM-dd): ")
+                val priority = readInt("Enter the task priority (integer): ")
 
-    // Ordenar tareas por fecha de vencimiento
-    taskManager.sortTasks { task -> task.dueDate as Comparable<Any> }
+                if (category == "Work") {
+                    println("Enter the project name: ")
+                    val projectName = readLine() ?: ""
+                    val workTask = WorkTask(title, description, dueDate, priority, projectName)
+                    taskManager.addTask(category, workTask)
+                } else if (category == "Personal") {
+                    println("Enter personal notes: ")
+                    val personalNotes = readLine() ?: ""
+                    val personalTask = PersonalTask(title, description, dueDate, priority, personalNotes)
+                    taskManager.addTask(category, personalTask)
+                } else {
+                    println("Invalid category. Use 'Work' or 'Personal'.")
+                }
+            }
+            "2" -> {
+                val priority = readInt("Enter the priority to filter: ")
+                val filteredTasks = taskManager.filterTasks { it.priority == priority }
+                filteredTasks.forEach { (category, tasks) ->
+                    println("\nCategory: $category")
+                    tasks.forEach { task ->
+                        println("Title: ${task.title}, Description: ${task.description}, Due Date: ${task.dueDate}, Priority: ${task.priority}")
+                    }
+                }
+            }
+            "3" -> {
+                taskManager.sortTasks { task -> task.dueDate as Comparable<Any> }
+                taskManager.tasksByCategory.forEach { (category, tasks) ->
+                    println("\nCategory: $category")
+                    tasks.forEach { task ->
+                        println("Title: ${task.title}, Description: ${task.description}, Due Date: ${task.dueDate}, Priority: ${task.priority}")
+                    }
+                }
+            }
+            "4" -> exitProcess(0)
+            else -> println("Invalid option. Try again.")
+        }
+    }
 }
